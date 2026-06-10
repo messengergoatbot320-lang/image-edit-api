@@ -1,5 +1,5 @@
 {
-  "name": "rocky-image-api",
+  "name": "image-edit-api",
   "version": "1.0.0",
   "description": "Image Edit API - Owner: Rocky Chowdhury",
   "dependencies": {
