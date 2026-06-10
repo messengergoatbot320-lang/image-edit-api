@@ -1,98 +1,100 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📁 FILE NAME  : edit.js
+// 📂 LOCATION   : api/edit.js  (GitHub repo)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 const axios = require("axios");
 
-// ═══════════════════════════════════════════
-//   Image Edit API v1.0
-//   Owner  : Rocky Chowdhury
-//   Author : Rocky Chowdhury
-//   Method : POST
-//   Body   : { prompt, images: [base64], format }
-// ═══════════════════════════════════════════
+// ═══════════════════════════════════
+//  Image Edit API v4.0
+//  Owner  : Rocky Chowdhury
+//  Author : Rocky Chowdhury
+//  POST   : /api/edit
+//  Body   : { prompt, images:[base64], format }
+// ═══════════════════════════════════
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("X-Owner", "Rocky Chowdhury");
-  res.setHeader("X-Author", "Rocky Chowdhury");
 
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // ── Info page (GET) ──
   if (req.method === "GET") {
     return res.status(200).json({
-      name: "🖼️ Image Edit API",
+      name: "Image Edit API",
       owner: "Rocky Chowdhury",
       author: "Rocky Chowdhury",
       status: "online ✅",
-      version: "1.0.0",
-      method: "POST",
-      body: {
-        prompt: "your edit instruction",
-        images: ["base64_image_string"],
-        format: "jpg"
-      }
+      version: "4.0.0",
+      method: "POST /api/edit",
+      body: { prompt: "string", images: ["base64"], format: "jpg" }
     });
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use POST." });
+    return res.status(405).json({ error: "Use POST method" });
   }
 
-  const { prompt, images, format } = req.body;
+  const { prompt, images, format } = req.body || {};
 
   if (!prompt || !images || !images[0]) {
     return res.status(400).json({
       error: "Missing parameters",
-      owner: "Rocky Chowdhury",
-      required: {
-        prompt: "edit instruction text",
-        images: ["base64 encoded image"],
-        format: "jpg or png"
-      }
+      required: { prompt: "text", images: ["base64 string"], format: "jpg" }
     });
   }
 
+  const imageBuffer = Buffer.from(images[0], "base64");
+
+  // ── Service 1: Hugging Face ──
+  const hfToken = process.env.HF_TOKEN;
+  if (hfToken) {
+    try {
+      const result = await huggingFaceEdit(imageBuffer, prompt, hfToken);
+      if (result) {
+        res.setHeader("Content-Type", "image/jpeg");
+        return res.status(200).send(result);
+      }
+    } catch (e) {
+      console.log("HF error:", e.message);
+    }
+  }
+
+  // ── Service 2: Gemini (Google FREE) ──
+  const geminiKey = process.env.GEMINI_KEY;
+  if (geminiKey) {
+    try {
+      const result = await geminiEdit(imageBuffer, prompt, geminiKey);
+      if (result) {
+        res.setHeader("Content-Type", "image/jpeg");
+        return res.status(200).send(result);
+      }
+    } catch (e) {
+      console.log("Gemini error:", e.message);
+    }
+  }
+
+  // ── Service 3: Pollinations (no key) ──
   try {
-    const base64Image = images[0];
-    const imageBuffer = Buffer.from(base64Image, "base64");
-
-    // ── Try Hugging Face (best quality) ──
-    const hfToken = process.env.HF_TOKEN;
-    if (hfToken) {
-      try {
-        const hfResult = await editWithHuggingFace(imageBuffer, prompt, hfToken);
-        if (hfResult) {
-          res.setHeader("Content-Type", "image/jpeg");
-          return res.status(200).send(hfResult);
-        }
-      } catch (e) {
-        console.log("HF failed:", e.message);
-      }
-    }
-
-    // ── Fallback: Pollinations AI ──
-    const fallback = await editWithPollinations(prompt);
-    if (fallback) {
+    const result = await pollinationsEdit(prompt);
+    if (result) {
       res.setHeader("Content-Type", "image/jpeg");
-      return res.status(200).send(fallback);
+      return res.status(200).send(result);
     }
-
-    throw new Error("All services failed");
-
-  } catch (error) {
-    console.error("Edit Error:", error.message);
-    return res.status(500).json({
-      error: "Image editing failed",
-      message: error.message,
-      owner: "Rocky Chowdhury"
-    });
+  } catch (e) {
+    console.log("Pollinations error:", e.message);
   }
+
+  return res.status(500).json({
+    error: "All services failed. Please try again.",
+    owner: "Rocky Chowdhury"
+  });
 };
 
-// ── Hugging Face instruct-pix2pix ──
-async function editWithHuggingFace(imageBuffer, prompt, token) {
+async function huggingFaceEdit(imageBuffer, prompt, token) {
   const base64 = imageBuffer.toString("base64");
-
   const response = await axios.post(
     "https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix",
     {
@@ -113,23 +115,52 @@ async function editWithHuggingFace(imageBuffer, prompt, token) {
       timeout: 55000
     }
   );
-
   if (response.status === 200 && response.data.byteLength > 5000) {
     return Buffer.from(response.data);
   }
   return null;
 }
 
-// ── Pollinations fallback ──
-async function editWithPollinations(prompt) {
+async function geminiEdit(imageBuffer, prompt, apiKey) {
+  const base64 = imageBuffer.toString("base64");
+  const response = await axios.post(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${apiKey}`,
+    {
+      contents: [
+        {
+          parts: [
+            { text: `Edit this image: ${prompt}. Keep the same subject and composition, just apply the requested changes.` },
+            { inline_data: { mime_type: "image/jpeg", data: base64 } }
+          ]
+        }
+      ],
+      generationConfig: { responseModalities: ["IMAGE"] }
+    },
+    {
+      headers: { "Content-Type": "application/json" },
+      timeout: 55000
+    }
+  );
+
+  const parts = response.data?.candidates?.[0]?.content?.parts;
+  if (parts) {
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        return Buffer.from(part.inlineData.data, "base64");
+      }
+    }
+  }
+  return null;
+}
+
+async function pollinationsEdit(prompt) {
   const models = ["flux", "flux-realism", "turbo"];
   const model = models[Math.floor(Math.random() * models.length)];
-  const fullPrompt = `${prompt}, photorealistic, ultra detailed, high quality 4k`;
-  const encoded = encodeURIComponent(fullPrompt);
+  const encoded = encodeURIComponent(`${prompt}, photorealistic, high quality, 4k`);
   const seed = Math.floor(Math.random() * 999999);
-  const apiUrl = `https://image.pollinations.ai/prompt/${encoded}?model=${model}&width=1024&height=1024&nologo=true&seed=${seed}`;
+  const url = `https://image.pollinations.ai/prompt/${encoded}?model=${model}&width=1024&height=1024&nologo=true&seed=${seed}`;
 
-  const response = await axios.get(apiUrl, {
+  const response = await axios.get(url, {
     responseType: "arraybuffer",
     timeout: 55000,
     headers: { "User-Agent": "Mozilla/5.0" }
