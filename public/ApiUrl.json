@@ -1,11 +1,3 @@
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📁 FILE NAME  : ApiUrl.json
-// 📂 LOCATION   : public/ApiUrl.json  (GitHub repo)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 {
-  "apiv3": "https://image-edit-api-theta.vercel.app/api/edit",
-  "owner": "Rocky Chowdhury",
-  "author": "Rocky Chowdhury",
-  "version": "4.0.0"
+  "apiv3": "https://image-edit-api-theta.vercel.app/api/edit"
 }
