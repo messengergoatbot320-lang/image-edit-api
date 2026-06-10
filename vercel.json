@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/gedit",
-      "dest": "/api/edit.js"
+      "source": "/gedit",
+      "destination": "/api/edit"
     }
   ]
 }
