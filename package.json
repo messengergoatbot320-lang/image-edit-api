@@ -1,13 +1,8 @@
 {
   "name": "image-edit-api",
   "version": "1.0.0",
-  "description": "Image Edit API by Rocky Chowdhury",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "description": "Image Edit API - Owner: Rocky Chowdhury",
   "dependencies": {
-    "axios": "^1.6.0",
-    "openai": "^4.28.0"
+    "axios": "^1.6.0"
   }
 }
