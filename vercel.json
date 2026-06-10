@@ -1,6 +1,6 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/gedit", "destination": "/api/edit" }
+    { "source": "/api/edit", "destination": "/api/edit" }
   ]
 }
